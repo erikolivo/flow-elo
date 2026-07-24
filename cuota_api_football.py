@@ -1,14 +1,14 @@
 """
 cuota_api_football.py
 ----------------------
-Lleva la cuenta de cuántas peticiones se han usado hoy contra el límite
-gratuito de 100/día de API-Football. NO cambia entre cuentas — se
-descartó esa idea porque los términos de servicio de API-Football
-prohíben explícitamente tener varias cuentas para aumentar el límite
+Lleva la cuenta de cuantas peticiones se han usado hoy contra el limite
+gratuito de 100/dia de API-Football. NO cambia entre cuentas -- se
+descarto esa idea porque los terminos de servicio de API-Football
+prohiben explicitamente tener varias cuentas para aumentar el limite
 gratuito.
 
-Se usa para el reporte de las 6am ("cuántas consultas quedaron
-disponibles").
+Se usa para el reporte de las 6am y para que otras partes del sistema
+(team_resolver.py) sepan cuanto cupo real queda antes de gastar mas.
 """
 
 import json
@@ -55,8 +55,8 @@ def uso_de_hoy():
 
 
 def marcar_agotado():
-    """Fuerza el contador local al límite diario -- se usa cuando la API
-    responde 429 (cupo real agotado según el proveedor), para que el
+    """Fuerza el contador local al limite diario -- se usa cuando la API
+    responde 429 (cupo real agotado segun el proveedor), para que el
     resto de la corrida deje de insistir con peticiones que sabemos que
     van a fallar."""
     estado = _cargar_estado()

@@ -1,20 +1,16 @@
 """
 goal_index.py
 -------------
-Junta el Goal Index de las 38 ligas de football-data.co.uk + el caché
-semanal de ligas extra (API-Football).
+Junta el Goal Index de las 38 ligas de football-data.co.uk + el cache
+semanal de ligas extra (API-Football). Mezcla 60% forma reciente (6
+partidos) + 40% temporada completa.
 
-Mezcla:
-  - 60% forma reciente (últimos 6 partidos de cada equipo)
-  - 40% temporada completa
-
-Las ligas extra (caché de API-Football, fuera de las 38 principales) NO
-tienen forma reciente por separado (por ahorrar cupo) -- para esos
-equipos se usa directo el índice del caché, sin mezcla.
-
-Sigue siendo una señal COMPLEMENTARIA al rating combinado (ClubElo +
-Glicko propio) -- no reemplaza al rating, lo ajusta vía
-poisson_model.goles_esperados().
+NUEVO: ademas del Goal Index, devuelve un mapa equipo->pais inferido del
+codigo de liga de origen (ej. "E0" -> "England"). Esto permite usar el
+Goal Index como fuente GRATUITA de pais (sin gastar peticiones de
+API-Football) para equipos que aparecen en estas 38+16 ligas conocidas
+-- ver CODIGO_LIGA_A_PAIS en fetch_data.py y su uso en
+seleccionar_partidos.py.
 """
 
 import json
@@ -26,6 +22,7 @@ from fetch_data import (
     calcular_goal_index,
     LIGAS_FOOTBALL_DATA,
     LIGAS_FOOTBALL_DATA_EXTRA,
+    CODIGO_LIGA_A_PAIS,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -56,14 +53,27 @@ def _mezclar(temporada, reciente):
 
 
 def construir_goal_index_global():
+    """Devuelve (goal_index, equipo_pais)."""
     goal_index_temporada = {}
     goal_index_reciente = {}
+    equipo_pais = {}
+
+    def _registrar_paises(resultados, pais):
+        if not pais:
+            return
+        for fila in resultados:
+            home, away = fila.get("HomeTeam"), fila.get("AwayTeam")
+            if home:
+                equipo_pais.setdefault(home, pais)
+            if away:
+                equipo_pais.setdefault(away, pais)
 
     for codigo in LIGAS_FOOTBALL_DATA:
         try:
             resultados = obtener_resultados_liga(codigo)
             goal_index_temporada.update(calcular_goal_index(resultados))
             goal_index_reciente.update(calcular_goal_index(resultados, ultimos_n=PARTIDOS_FORMA_RECIENTE))
+            _registrar_paises(resultados, CODIGO_LIGA_A_PAIS.get(codigo))
         except Exception as e:
             print(f"[AVISO] No se pudo procesar la liga {codigo}: {e}")
 
@@ -72,6 +82,7 @@ def construir_goal_index_global():
             resultados = obtener_resultados_liga_extra(codigo)
             goal_index_temporada.update(calcular_goal_index(resultados))
             goal_index_reciente.update(calcular_goal_index(resultados, ultimos_n=PARTIDOS_FORMA_RECIENTE))
+            _registrar_paises(resultados, CODIGO_LIGA_A_PAIS.get(codigo))
         except Exception as e:
             print(f"[AVISO] No se pudo procesar la liga extra {codigo}: {e}")
 
@@ -86,6 +97,6 @@ def construir_goal_index_global():
                     "goal_index_forma_reciente": None, "partidos_forma_reciente": 0,
                 })
         except Exception as e:
-            print(f"[AVISO] No se pudo leer el caché de goal_index_extra.json: {e}")
+            print(f"[AVISO] No se pudo leer el cache de goal_index_extra.json: {e}")
 
-    return goal_index
+    return goal_index, equipo_pais

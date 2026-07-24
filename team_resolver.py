@@ -1,25 +1,30 @@
 """
 team_resolver.py
 ------------------
-Resuelve, para cada equipo, su PAÍS REAL (no el país de la liga del
-fixture) y lo cachea para siempre -- el país de un club no cambia, así
-que esta es una petición que se paga una sola vez por equipo en toda la
-vida del proyecto.
+Resuelve, para cada equipo, su PAIS REAL (no el pais de la liga del
+fixture) y lo cachea para siempre -- el pais de un club no cambia, asi
+que esta es una peticion que se paga como maximo una vez por equipo en
+toda la vida del proyecto (y en la practica, mucho menos: ver el ahorro
+por liga domestica y por Goal Index en seleccionar_partidos.py).
 
-Por qué esto reemplaza el filtro anterior (país de la liga):
-El código original filtraba el Elo por el país de la LIGA del fixture
-(f["league"]["country"]). Eso funciona en ligas domésticas, pero se
-rompe en torneos internacionales (Copa Libertadores, Champions League,
-Sudamericana...) donde la liga puede reportar "World" o el país sede,
-mientras cada equipo pertenece en realidad a un país distinto. Resolver
-el país POR EQUIPO (vía team_id) corrige esto de raíz.
+CORRECCION IMPORTANTE (encontrada en produccion): la version anterior
+comparaba el pais del equipo (en ingles, ej. "England") directamente
+contra las llaves de elo_por_pais -- pero esas llaves vienen del CSV de
+ClubElo y usan CODIGOS DE 3 LETRAS (ej. "ENG"), nunca el nombre en
+ingles. Esto significaba que el emparejamiento "por pais propio" NUNCA
+coincidia, ni siquiera para partidos 100% domesticos -- todo terminaba
+cayendo en la busqueda global sin verificar. Se corrige convirtiendo
+SIEMPRE el pais (ingles) a su codigo de ClubElo antes de indexar
+elo_por_pais. PAIS_A_CODIGO_CLUBELO ahora vive aqui (antes estaba
+duplicado en seleccionar_partidos.py) para que exista una sola fuente
+de verdad de esa conversion.
 
-Verificación cruzada (opción B, confirmada explícitamente):
+Verificacion cruzada (opcion B, confirmada explicitamente):
 Si uno de los dos equipos de un partido no logra emparejarse con
-confianza dentro de su propio país, se usa el país/confederación YA
+confianza dentro de su propio pais, se usa el pais/confederacion YA
 resuelto del RIVAL como filtro adicional -- se descartan candidatos de
-ClubElo que no pertenezcan a la misma confederación que el rival, en vez
-de aceptar "el nombre más parecido" a ciegas en una búsqueda global.
+ClubElo que no pertenezcan a la misma confederacion que el rival, en vez
+de aceptar "el nombre mas parecido" a ciegas en una busqueda global.
 """
 
 import json
@@ -28,28 +33,44 @@ from pathlib import Path
 DATA_DIR = Path(__file__).parent / "data"
 ARCHIVO_CACHE = DATA_DIR / "team_country_cache.json"
 
-# Mapeo de país -> confederación, usado SOLO para la verificación cruzada
-# (opción B): no hace falta que sea exhaustivo, solo lo suficientemente
-# bueno para descartar candidatos evidentemente fuera de lugar (ej. un
-# club europeo emparejado por error con un rival sudamericano en una
-# competición de CONMEBOL).
+# Pais (como lo reporta la liga en API-Football, en texto en ingles) ->
+# codigo de 3 letras que usa ClubElo. Unica fuente de esta conversion en
+# todo el proyecto -- si un pais no esta aqui, no se puede indexar
+# elo_por_pais para el, y el llamador debe caer al comportamiento de
+# respaldo (busqueda global, marcada como no verificada).
+PAIS_A_CODIGO_CLUBELO = {
+    "England": "ENG", "Scotland": "SCO", "Wales": "WAL", "Northern-Ireland": "NIR",
+    "Spain": "ESP", "Italy": "ITA", "Germany": "GER", "France": "FRA",
+    "Portugal": "POR", "Netherlands": "NED", "Belgium": "BEL", "Turkey": "TUR",
+    "Greece": "GRE", "Russia": "RUS", "Ukraine": "UKR", "Poland": "POL",
+    "Austria": "AUT", "Switzerland": "SUI", "Sweden": "SWE", "Norway": "NOR",
+    "Denmark": "DEN", "Finland": "FIN", "Iceland": "ISL", "Ireland": "IRL",
+    "Croatia": "CRO", "Serbia": "SRB", "Romania": "ROU", "Bulgaria": "BUL",
+    "Hungary": "HUN", "Czech-Republic": "CZE", "Slovakia": "SVK", "Slovenia": "SVN",
+    "Bosnia": "BIH", "Israel": "ISR", "Cyprus": "CYP", "Luxembourg": "LUX",
+    "Brazil": "BRA", "Argentina": "ARG", "Mexico": "MEX", "USA": "USA",
+    "Colombia": "COL", "Chile": "CHI", "Peru": "PER", "Uruguay": "URU",
+    "Ecuador": "ECU", "Paraguay": "PAR", "Bolivia": "BOL", "Venezuela": "VEN",
+    "Australia": "AUS", "Japan": "JPN", "South-Korea": "KOR", "China": "CHN",
+    "Saudi-Arabia": "KSA", "Qatar": "QAT", "Egypt": "EGY", "South-Africa": "RSA",
+}
+
+# Pais -> confederacion, usado SOLO para la verificacion cruzada (opcion
+# B): no hace falta que sea exhaustivo, solo lo suficientemente bueno
+# para descartar candidatos evidentemente fuera de lugar.
 CONFEDERACION_POR_PAIS = {
-    # CONMEBOL
     "Brazil": "CONMEBOL", "Argentina": "CONMEBOL", "Uruguay": "CONMEBOL",
     "Paraguay": "CONMEBOL", "Chile": "CONMEBOL", "Colombia": "CONMEBOL",
     "Ecuador": "CONMEBOL", "Peru": "CONMEBOL", "Bolivia": "CONMEBOL",
     "Venezuela": "CONMEBOL",
-    # UEFA (lista no exhaustiva, cubre las principales)
     "England": "UEFA", "Spain": "UEFA", "Italy": "UEFA", "Germany": "UEFA",
     "France": "UEFA", "Portugal": "UEFA", "Netherlands": "UEFA",
     "Belgium": "UEFA", "Scotland": "UEFA", "Turkey": "UEFA", "Greece": "UEFA",
     "Russia": "UEFA", "Ukraine": "UEFA", "Poland": "UEFA", "Austria": "UEFA",
     "Switzerland": "UEFA", "Sweden": "UEFA", "Norway": "UEFA", "Denmark": "UEFA",
     "Croatia": "UEFA", "Serbia": "UEFA", "Romania": "UEFA",
-    # CONCACAF
     "Mexico": "CONCACAF", "USA": "CONCACAF", "Costa-Rica": "CONCACAF",
     "Honduras": "CONCACAF", "Panama": "CONCACAF",
-    # AFC / CAF (básicos)
     "Japan": "AFC", "South-Korea": "AFC", "China": "AFC", "Saudi-Arabia": "AFC",
     "Qatar": "AFC", "Egypt": "CAF", "South-Africa": "CAF", "Morocco": "CAF",
 }
@@ -73,36 +94,47 @@ def confederacion_de(pais):
     return CONFEDERACION_POR_PAIS.get(pais)
 
 
-# --- Presupuesto de peticiones nuevas por corrida ---------------------
-# CORRECCIÓN IMPORTANTE (detectada en producción): la primera versión
-# llamaba a la API para resolver el país de CADA equipo de CADA partido
-# del día, sin importar si hacía falta -- con cientos de fixtures en el
-# mundo, eso agotaba el cupo diario de 100 peticiones en la primera
-# corrida (error 429). La corrección real está en seleccionar_partidos.py
-# (solo se llama a esta función cuando la liga NO es doméstica reconocida,
-# es decir, el caso real que motivó el cambio: torneos internacionales).
-# Este tope es una segunda red de seguridad, no la solución principal:
-# aunque un día haya muchísimos partidos internacionales, nunca se debe
-# gastar más de LIMITE_RESOLUCIONES_POR_CORRIDA peticiones solo en esto.
-LIMITE_RESOLUCIONES_POR_CORRIDA = 25
+def codigo_clubelo_de(pais):
+    return PAIS_A_CODIGO_CLUBELO.get(pais)
 
+
+# --- Presupuesto de peticiones nuevas por corrida ---------------------
+# CORRECCION IMPORTANTE (detectada en produccion): la primera version
+# llamaba a la API para resolver el pais de CADA equipo de CADA partido
+# del dia, sin importar si hacia falta -- con cientos de fixtures en el
+# mundo, eso agotaba el cupo diario de 100 peticiones en la primera
+# corrida (error 429). La correccion real esta en seleccionar_partidos.py
+# (solo se llama a esta funcion cuando la liga NO es domestica reconocida
+# NI se pudo inferir gratis via Goal Index -- ver ese archivo). Este tope
+# es una segunda red de seguridad, configurable por corrida: el llamador
+# (seleccionar_partidos.py) decide el presupuesto real disponible segun
+# el limite total acordado (50 peticiones para toda la Fase 1).
+LIMITE_RESOLUCIONES_POR_CORRIDA_DEFECTO = 25
+
+_limite_efectivo_esta_corrida = LIMITE_RESOLUCIONES_POR_CORRIDA_DEFECTO
 _contador_resoluciones_esta_corrida = 0
 
 
-def resetear_contador_corrida():
-    global _contador_resoluciones_esta_corrida
+def resetear_contador_corrida(limite=None):
+    """Reinicia el contador de resoluciones-por-API al empezar una
+    corrida de Fase 1. 'limite' permite que el llamador fije el
+    presupuesto real de esta corrida (ver TOPE_PETICIONES_FASE1 en
+    seleccionar_partidos.py); si no se pasa, usa el valor por defecto."""
+    global _contador_resoluciones_esta_corrida, _limite_efectivo_esta_corrida
     _contador_resoluciones_esta_corrida = 0
+    _limite_efectivo_esta_corrida = limite if limite is not None else LIMITE_RESOLUCIONES_POR_CORRIDA_DEFECTO
 
 
 def resolver_pais_equipo(team_id, nombre_fallback, obtener_info_equipo_fn):
     """
-    Devuelve el país real del equipo. Usa caché en disco; si no está
-    cacheado, paga 1 petición (obtener_info_equipo_fn) y lo guarda para
-    siempre -- PERO solo si todavía hay presupuesto disponible esta
-    corrida (ver LIMITE_RESOLUCIONES_POR_CORRIDA) y cupo real restante
-    del día. Si no hay presupuesto, devuelve None de inmediato SIN pagar
-    ninguna petición -- el llamador cae de vuelta al comportamiento
-    anterior (país de la liga, marcado como "sin verificar").
+    Devuelve el pais real del equipo. Usa cache en disco; si no esta
+    cacheado, paga 1 peticion (obtener_info_equipo_fn) y lo guarda para
+    siempre -- PERO solo si todavia hay presupuesto disponible esta
+    corrida (ver resetear_contador_corrida) y cupo real restante del
+    dia. Si no hay presupuesto, devuelve None de inmediato SIN pagar
+    ninguna peticion -- el llamador cae de vuelta al comportamiento
+    anterior (pais de la liga o Goal Index, marcado como "sin verificar"
+    si ninguno de los dos aplica).
     """
     global _contador_resoluciones_esta_corrida
 
@@ -111,21 +143,21 @@ def resolver_pais_equipo(team_id, nombre_fallback, obtener_info_equipo_fn):
     if entrada:
         return entrada["pais"]
 
-    if _contador_resoluciones_esta_corrida >= LIMITE_RESOLUCIONES_POR_CORRIDA:
+    if _contador_resoluciones_esta_corrida >= _limite_efectivo_esta_corrida:
         return None
 
     try:
         from cuota_api_football import uso_de_hoy
         _usadas, disponibles = uso_de_hoy()
-        if disponibles <= 15:  # deja margen para el resto de la Fase 1 y otras fases del día
+        if disponibles <= 10:  # deja margen para el resto del dia (Fase 3/4)
             return None
     except Exception:
-        pass  # si no se puede leer el contador local, seguimos con el tope de corrida como única red
+        pass  # si no se puede leer el contador local, seguimos solo con el tope de corrida
 
     try:
         info = obtener_info_equipo_fn(team_id)
     except Exception as e:
-        print(f"[AVISO] No se pudo resolver el país del equipo {nombre_fallback} (id {team_id}): {e}")
+        print(f"[AVISO] No se pudo resolver el pais del equipo {nombre_fallback} (id {team_id}): {e}")
         _contador_resoluciones_esta_corrida += 1
         return None
 
@@ -145,37 +177,40 @@ def elegir_candidato_verificado(nombre, pais_equipo, elo_por_pais, elo_global, b
     """
     Busca el mejor candidato de ClubElo para 'nombre', en este orden:
 
-      1. Si se conoce pais_equipo Y ese país está en la tabla de ClubElo:
-         búsqueda restringida a ESE país (el caso normal, más confiable).
-      2. Si no se conoce pais_equipo pero sí pais_rival (verificación
-         cruzada, opción B): búsqueda restringida a los países que
-         comparten confederación con el rival, en vez de una búsqueda
-         totalmente libre.
-      3. Si no hay ninguna pista de país: búsqueda global (como antes),
-         marcada como no verificada.
+      1. Si se conoce pais_equipo (nombre en ingles) Y su codigo de
+         ClubElo tiene tabla propia: busqueda restringida a ESE pais.
+      2. Si no se conoce pais_equipo pero si pais_rival (verificacion
+         cruzada, opcion B): busqueda restringida a los paises que
+         comparten confederacion con el rival.
+      3. Si no hay ninguna pista de pais: busqueda global, marcada como
+         no verificada.
 
     Devuelve (elo, pais_verificado: bool, metodo: str)
     """
-    if pais_equipo and pais_equipo in elo_por_pais:
-        candidatos = list(elo_por_pais[pais_equipo].keys())
+    codigo_equipo = codigo_clubelo_de(pais_equipo) if pais_equipo else None
+    if codigo_equipo and codigo_equipo in elo_por_pais:
+        candidatos = list(elo_por_pais[codigo_equipo].keys())
         match = buscar_similar_fn(nombre, candidatos, n=1, corte=0.6)
         if match:
-            return elo_por_pais[pais_equipo][match[0]], True, "pais_propio"
+            return elo_por_pais[codigo_equipo][match[0]], True, "pais_propio"
 
     if pais_rival:
         confed_rival = confederacion_de(pais_rival)
         if confed_rival:
             paises_confed = [p for p, c in CONFEDERACION_POR_PAIS.items() if c == confed_rival]
             candidatos = []
-            mapa_candidato_a_pais = {}
+            mapa_candidato_a_codigo = {}
             for p in paises_confed:
-                for club in elo_por_pais.get(p, {}):
+                codigo_p = codigo_clubelo_de(p)
+                if not codigo_p:
+                    continue
+                for club in elo_por_pais.get(codigo_p, {}):
                     candidatos.append(club)
-                    mapa_candidato_a_pais[club] = p
+                    mapa_candidato_a_codigo[club] = codigo_p
             match = buscar_similar_fn(nombre, candidatos, n=1, corte=0.6)
             if match:
-                pais_encontrado = mapa_candidato_a_pais[match[0]]
-                return elo_por_pais[pais_encontrado][match[0]], True, "verificacion_cruzada"
+                codigo_encontrado = mapa_candidato_a_codigo[match[0]]
+                return elo_por_pais[codigo_encontrado][match[0]], True, "verificacion_cruzada"
 
     candidatos_global = list(elo_global.keys())
     match = buscar_similar_fn(nombre, candidatos_global, n=1, corte=0.6)

@@ -5,34 +5,20 @@ Descarga datos crudos de fuentes gratuitas:
 
 - ClubElo (clubes):     http://api.clubelo.com
 - Eloratings (selecciones): https://www.eloratings.net
-- football-data.co.uk (resultados históricos por liga, para el "goal index" de clubes)
-- API-Football (api-sports.io): vigilancia en vivo, país de equipo, eventos
+- football-data.co.uk (resultados historicos por liga, para el "goal index")
+- API-Football (api-sports.io): vigilancia en vivo, pais de equipo, eventos
 
-IMPORTANTE (léelo antes de correr en producción):
-Estas fuentes NO tienen un contrato de API estable/documentado oficialmente
-(salvo ClubElo, que sí documenta su formato en http://clubelo.com/API).
-Por eso este archivo aísla TODAS las llamadas de red en funciones pequeñas:
-si un formato cambia, solo hay que tocar una función aquí, no todo el proyecto.
+Si alguna funcion falla, revisa:
+  1. Que la URL siga respondiendo igual (abrela en el navegador).
+  2. Que el nombre de equipo que buscas este escrito como en la fuente.
 
-Si alguna función falla, revisa:
-  1. Que la URL siga respondiendo igual (ábrela en el navegador).
-  2. Que el nombre de equipo que buscas esté escrito como en la fuente
-     (usa buscar_equipo_similar() para encontrar coincidencias aproximadas).
-
-NOVEDAD DE ESTA VERSIÓN -- costo de cupo de API-Football:
-Se agregaron dos llamadas nuevas usadas por monitor.py en cada revisión:
-  - obtener_eventos_fixture(): necesaria para detectar tarjetas rojas y
-    penales en tiempo real. Esto SUMA 1 petición por partido por
-    revisión, además de la de estadísticas que ya existía -- es decir,
-    duplica el costo por partido vigilado. Se decidió aceptar este costo
-    a propósito porque tarjetas rojas y penales son señales de altísimo
-    valor (cambian la probabilidad de gol de forma drástica) que antes
-    se ignoraban por completo. La frecuencia adaptativa (10/15 min según
-    carga) sigue siendo la herramienta principal para mantener esto
-    dentro del cupo de 100/día.
-  - obtener_info_equipo(): SOLO se paga una vez por equipo en la vida del
-    proyecto (se cachea en team_country_cache.json vía team_resolver.py),
-    así que su impacto en el cupo diario es mínimo y decreciente.
+COSTO DE CUPO DE API-FOOTBALL:
+  - obtener_eventos_fixture(): 1 peticion por partido por revision en
+    Fase 3 (tarjetas/penales), ademas de la de estadisticas.
+  - obtener_info_equipo(): se paga como maximo una vez por equipo en la
+    vida del proyecto (cacheado via team_resolver.py), y ahora ademas
+    solo se llama cuando ni la liga domestica NI el Goal Index pudieron
+    dar el pais gratis (ver seleccionar_partidos.py).
 """
 
 import csv
@@ -47,14 +33,6 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; EloPredictorBot/1.0)"}
 
 
 def _get_con_reintentos(url, headers=None, params=None, timeout=35, intentos=5):
-    """
-    Wrapper de requests.get() con reintentos y backoff. ClubElo en
-    particular es un sitio pequeño que documenta públicamente que a veces
-    se sobrecarga ("Site overloaded, only cached pages available"). Con 1
-    solo intento eso se traduce en una falla del workflow. Con esto, si un
-    intento falla por timeout o error de conexión, esperamos un poco más
-    cada vez y reintentamos, hasta 'intentos' veces, antes de rendirnos.
-    """
     ultimo_error = None
     for intento in range(1, intentos + 1):
         try:
@@ -63,14 +41,12 @@ def _get_con_reintentos(url, headers=None, params=None, timeout=35, intentos=5):
             return r
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
             ultimo_error = e
-            print(f"[AVISO] Intento {intento}/{intentos} falló para {url}: {e}")
+            print(f"[AVISO] Intento {intento}/{intentos} fallo para {url}: {e}")
             if intento < intentos:
-                time.sleep(8 * intento)  # 8s, 16s, 24s, 32s... backoff creciente
+                time.sleep(8 * intento)
     raise ultimo_error
 
-# API-Football (api-sports.io) - vigilancia en vivo + resolución de país.
-# Plan gratis: 100 peticiones/día. Todas las funciones están diseñadas
-# para hacer el mínimo de peticiones posible.
+
 API_FOOTBALL_KEY = os.environ.get("API_FOOTBALL_KEY", "")
 API_FOOTBALL_BASE = "https://v3.football.api-sports.io"
 
@@ -81,14 +57,10 @@ def _headers_api_football():
 
 def _api_football_request(endpoint, params=None, timeout=20):
     """
-    Punto único por donde pasan TODAS las llamadas a API-Football.
-    Usa una sola cuenta (API_FOOTBALL_KEY) y registra el uso del día vía
-    cuota_api_football.py, para poder reportarlo en el resumen de las 6am.
-
+    Punto unico por donde pasan TODAS las llamadas a API-Football.
     Si la API responde 429 (cupo diario agotado), se marca el contador
     LOCAL como agotado de inmediato -- sin esto, el resto de la misma
-    corrida seguiría intentando peticiones que sabemos que van a fallar,
-    hasta encontrarse el error en cada una (visto en producción).
+    corrida seguiria intentando peticiones que sabemos que van a fallar.
     """
     from cuota_api_football import registrar_uso, marcar_agotado
 
@@ -106,7 +78,7 @@ def _api_football_request(endpoint, params=None, timeout=20):
 
 
 # ---------------------------------------------------------------------------
-# 1. CLUB ELO  (clubes de fútbol)
+# 1. CLUB ELO
 # ---------------------------------------------------------------------------
 
 CACHE_FIXTURES = Path(__file__).parent / "data" / "_cache_fixtures.csv"
@@ -114,15 +86,6 @@ CACHE_FIXTURES.parent.mkdir(exist_ok=True)
 
 
 def obtener_fixtures_clubelo():
-    """
-    Devuelve la lista de próximos partidos de clubes con las probabilidades
-    YA calculadas por ClubElo (1X2 y probabilidad de cada resultado exacto).
-    Fuente: http://api.clubelo.com/Fixtures
-
-    Si ClubElo falla incluso tras todos los reintentos, usamos el último
-    resultado que sí funcionó, guardado en caché, en vez de fallar por
-    completo.
-    """
     url = "http://api.clubelo.com/Fixtures"
     try:
         r = _get_con_reintentos(url, headers=HEADERS)
@@ -130,11 +93,10 @@ def obtener_fixtures_clubelo():
         return list(csv.DictReader(io.StringIO(r.text)))
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
         if CACHE_FIXTURES.exists():
-            print(f"[AVISO] ClubElo no respondió tras varios intentos ({e}). "
-                  f"Usando el último resultado exitoso guardado en caché.")
+            print(f"[AVISO] ClubElo no respondio tras varios intentos ({e}). Usando cache.")
             texto_cache = CACHE_FIXTURES.read_text(encoding="utf-8")
             return list(csv.DictReader(io.StringIO(texto_cache)))
-        print("[AVISO] ClubElo no respondió y no hay caché previo disponible.")
+        print("[AVISO] ClubElo no respondio y no hay cache previo disponible.")
         raise
 
 
@@ -142,10 +104,6 @@ CACHE_RANKING = Path(__file__).parent / "data" / "_cache_ranking.csv"
 
 
 def obtener_ranking_clubelo(fecha="today"):
-    """
-    Devuelve el ranking Elo completo de clubes para una fecha (YYYY-MM-DD)
-    o 'today' para el más reciente. Con el mismo respaldo de caché.
-    """
     url = f"http://api.clubelo.com/{fecha}"
     try:
         r = _get_con_reintentos(url, headers=HEADERS)
@@ -153,15 +111,13 @@ def obtener_ranking_clubelo(fecha="today"):
         return list(csv.DictReader(io.StringIO(r.text)))
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
         if CACHE_RANKING.exists():
-            print(f"[AVISO] ClubElo no respondió tras varios intentos ({e}). "
-                  f"Usando el último ranking guardado en caché.")
+            print(f"[AVISO] ClubElo no respondio tras varios intentos ({e}). Usando cache.")
             return list(csv.DictReader(io.StringIO(CACHE_RANKING.read_text(encoding="utf-8"))))
-        print("[AVISO] ClubElo no respondió y no hay caché previo disponible.")
+        print("[AVISO] ClubElo no respondio y no hay cache previo disponible.")
         raise
 
 
 def obtener_historial_club(nombre_club):
-    """Devuelve el historial de Elo de un club específico."""
     url = f"http://api.clubelo.com/{nombre_club}"
     r = _get_con_reintentos(url, headers=HEADERS)
     reader = csv.DictReader(io.StringIO(r.text))
@@ -169,7 +125,7 @@ def obtener_historial_club(nombre_club):
 
 
 # ---------------------------------------------------------------------------
-# 2. ELORATINGS.NET  (selecciones nacionales)
+# 2. ELORATINGS.NET
 # ---------------------------------------------------------------------------
 
 def obtener_ranking_selecciones():
@@ -178,14 +134,11 @@ def obtener_ranking_selecciones():
     if r.status_code == 200 and "\t" in r.text:
         filas = [l.split("\t") for l in r.text.strip().split("\n")]
         return filas
-    raise RuntimeError(
-        "No se pudo leer el ranking de selecciones desde eloratings.net. "
-        "Es posible que la URL del archivo .tsv haya cambiado."
-    )
+    raise RuntimeError("No se pudo leer el ranking de selecciones desde eloratings.net.")
 
 
 # ---------------------------------------------------------------------------
-# 3. FOOTBALL-DATA.CO.UK  (resultados históricos -> goal index de clubes)
+# 3. FOOTBALL-DATA.CO.UK
 # ---------------------------------------------------------------------------
 
 LIGAS_FOOTBALL_DATA = {
@@ -197,23 +150,23 @@ LIGAS_FOOTBALL_DATA = {
     "I1": "Serie A", "I2": "Serie B",
     "SP1": "La Liga", "SP2": "La Liga 2",
     "F1": "Ligue 1", "F2": "Ligue 2",
-    "N1": "Eredivisie (Países Bajos)",
-    "B1": "Pro League (Bélgica)",
+    "N1": "Eredivisie (Paises Bajos)",
+    "B1": "Pro League (Belgica)",
     "P1": "Primeira Liga (Portugal)",
-    "T1": "Süper Lig (Turquía)",
+    "T1": "Super Lig (Turquia)",
     "G1": "Super League (Grecia)",
 }
 
 LIGAS_FOOTBALL_DATA_EXTRA = {
-    "ARG": "Argentina - Primera División",
+    "ARG": "Argentina - Primera Division",
     "AUT": "Austria - Bundesliga",
-    "BRA": "Brasil - Série A",
+    "BRA": "Brasil - Serie A",
     "CHN": "China - Super League",
     "DNK": "Dinamarca - Superliga",
     "FIN": "Finlandia - Veikkausliiga",
     "IRL": "Irlanda - Premier Division",
-    "JPN": "Japón - J1 League",
-    "MEX": "México - Liga MX",
+    "JPN": "Japon - J1 League",
+    "MEX": "Mexico - Liga MX",
     "NOR": "Noruega - Eliteserien",
     "POL": "Polonia - Ekstraklasa",
     "ROU": "Rumania - Liga I",
@@ -221,6 +174,28 @@ LIGAS_FOOTBALL_DATA_EXTRA = {
     "SWE": "Suecia - Allsvenskan",
     "SWZ": "Suiza - Super League",
     "USA": "Estados Unidos - MLS",
+}
+
+# NUEVO: codigo de liga -> pais (nombre en ingles, MISMA convencion que
+# team_resolver.PAIS_A_CODIGO_CLUBELO), para poder usar el Goal Index
+# como fuente GRATUITA de pais de cada equipo -- ver goal_index.py y su
+# uso en seleccionar_partidos.py.
+CODIGO_LIGA_A_PAIS = {
+    "E0": "England", "E1": "England", "E2": "England", "E3": "England", "EC": "England",
+    "SC0": "Scotland", "SC1": "Scotland", "SC2": "Scotland", "SC3": "Scotland",
+    "D1": "Germany", "D2": "Germany",
+    "I1": "Italy", "I2": "Italy",
+    "SP1": "Spain", "SP2": "Spain",
+    "F1": "France", "F2": "France",
+    "N1": "Netherlands",
+    "B1": "Belgium",
+    "P1": "Portugal",
+    "T1": "Turkey",
+    "G1": "Greece",
+    "ARG": "Argentina", "AUT": "Austria", "BRA": "Brazil", "CHN": "China",
+    "DNK": "Denmark", "FIN": "Finland", "IRL": "Ireland", "JPN": "Japan",
+    "MEX": "Mexico", "NOR": "Norway", "POL": "Poland", "ROU": "Romania",
+    "RUS": "Russia", "SWE": "Sweden", "SWZ": "Switzerland", "USA": "USA",
 }
 
 
@@ -244,12 +219,6 @@ def obtener_resultados_liga_extra(codigo_liga):
 
 
 def obtener_resultados_liga_multi_temporada(codigo_liga, temporadas):
-    """
-    NUEVO: para el bootstrap de Glicko-2 (últimas 1-2 temporadas), en vez
-    de solo la temporada en curso. 'temporadas' es una lista tipo
-    ["2425", "2526"]. Devuelve todos los partidos concatenados, en orden
-    cronológico (necesario para reproducir el histórico correctamente).
-    """
     todos = []
     for temporada in temporadas:
         try:
@@ -275,7 +244,6 @@ def calcular_goal_index(resultados, ultimos_n=None):
             gh, ga = int(partido["FTHG"]), int(partido["FTAG"])
         except (KeyError, ValueError):
             continue
-
         fecha = _parsear_fecha_football_data(partido.get("Date", ""))
         _agregar(home, fecha, gh, ga)
         _agregar(away, fecha, ga, gh)
@@ -287,7 +255,6 @@ def calcular_goal_index(resultados, ultimos_n=None):
             partidos = partidos[:ultimos_n]
         if not partidos:
             continue
-
         gf_prom = sum(p[1] for p in partidos) / len(partidos)
         gc_prom = sum(p[2] for p in partidos) / len(partidos)
         resultado[equipo] = {
@@ -322,42 +289,22 @@ def buscar_equipo_similar(nombre, lista_nombres, n=3, corte=0.5):
 # ---------------------------------------------------------------------------
 
 def obtener_fixtures_por_fecha(fecha_iso):
-    """1 petición: todos los partidos programados en el mundo para 'fecha_iso'."""
     return _api_football_request("fixtures", params={"date": fecha_iso})
 
 
 def obtener_partidos_en_vivo():
-    """1 petición: TODOS los partidos en vivo en el mundo ahora mismo."""
     return _api_football_request("fixtures", params={"live": "all"})
 
 
 def obtener_estadisticas_fixture(fixture_id):
-    """
-    1 petición por partido. Devuelve estadísticas de ambos equipos
-    (tiros, córners, posesión, y "expected_goals" cuando la liga lo
-    expone -- ver extraer_xg() más abajo para leerlo de forma segura).
-    """
     return _api_football_request("fixtures/statistics", params={"fixture": fixture_id})
 
 
 def obtener_eventos_fixture(fixture_id):
-    """
-    NUEVO -- 1 petición por partido (además de la de estadísticas).
-    Devuelve la lista cruda de eventos (goles, tarjetas, sustituciones)
-    de API-Football. Se usa para detectar tarjetas rojas y penales en
-    tiempo real -- ver monitor.py: _extraer_eventos_relevantes().
-    """
     return _api_football_request("fixtures/events", params={"fixture": fixture_id})
 
 
 def extraer_xg(stats_equipo):
-    """
-    Intenta leer el xG (Expected Goals) del bloque de estadísticas de un
-    equipo, si la liga/plan lo expone. Devuelve None si no está
-    disponible -- el resto del sistema debe seguir funcionando sin xG
-    (se cae a la aproximación por tiros a puerta), nunca fallar por
-    su ausencia.
-    """
     for item in stats_equipo.get("statistics", []):
         if item.get("type", "").lower() in ("expected_goals", "xg"):
             v = item.get("value")
@@ -369,11 +316,6 @@ def extraer_xg(stats_equipo):
 
 
 def obtener_info_equipo(team_id):
-    """
-    1 petición POR EQUIPO, pero SOLO la primera vez que se ve ese equipo
-    (team_resolver.py lo cachea para siempre en team_country_cache.json).
-    Devuelve {"nombre":..., "country":...} o None si no se encuentra.
-    """
     respuesta = _api_football_request("teams", params={"id": team_id})
     if not respuesta:
         return None
@@ -382,13 +324,11 @@ def obtener_info_equipo(team_id):
 
 
 def obtener_resultado_fixture(fixture_id):
-    """1 petición: consulta un partido específico por su fixture_id."""
     respuesta = _api_football_request("fixtures", params={"id": fixture_id})
     return respuesta[0] if respuesta else None
 
 
 def obtener_prediccion_fixture(fixture_id):
-    """1 petición por partido: la predicción propia de API-Football."""
     respuesta = _api_football_request("predictions", params={"fixture": fixture_id})
     return respuesta[0] if respuesta else None
 
@@ -398,7 +338,6 @@ TEMPORADA_API_FOOTBALL = 2026
 
 
 def buscar_id_liga_api_football(nombre_busqueda):
-    """Ayuda a encontrar el league_id correcto en API-Football (uso manual, 1 vez)."""
     resultados = _api_football_request("leagues", params={"search": nombre_busqueda})
     return [
         {"id": x["league"]["id"], "nombre": x["league"]["name"], "pais": x["country"]["name"]}
@@ -407,7 +346,6 @@ def buscar_id_liga_api_football(nombre_busqueda):
 
 
 def obtener_standings_liga(league_id, temporada=TEMPORADA_API_FOOTBALL):
-    """1 petición: tabla de posiciones completa de una liga."""
     respuesta = _api_football_request("standings", params={"league": league_id, "season": temporada})
     if not respuesta:
         return []
