@@ -1,16 +1,5 @@
 name: Fase 3 - Vigilancia en vivo
 
-# GitHub Actions NO garantiza que un cron cada 5 min corra realmente
-# cada 5 min (puede atrasarse o saltarse ejecuciones). Por eso, en vez de
-# depender de un cron muy frecuente, este workflow se dispara solo 4
-# veces al dia y cada disparo se queda corriendo por dentro ~5.5 horas,
-# revisando cada 5 min con un `sleep` propio que no depende de que
-# GitHub lo vuelva a agendar. 4 x 5.5h = 22h de cobertura real del dia.
-#
-# Horarios de disparo (UTC): 00:00, 05:30, 11:00, 16:30
-# (equivalen a 19:00, 00:30, 06:00, 11:30 hora local UTC-5)
-# Ajusta estos horarios si la mayoria de tus partidos caen fuera de estas
-# franjas.
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -26,7 +15,7 @@ concurrency:
 jobs:
   vigilar:
     runs-on: ubuntu-latest
-    timeout-minutes: 345  # 5.75h de margen (limite del loop interno es 5.5h)
+    timeout-minutes: 345
     env:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -51,12 +40,13 @@ jobs:
 
       - name: Loop de vigilancia (5.5h, revisa cada 5 min, commitea tras cada revision)
         run: |
-          FIN=$((SECONDS + 19800))  # 5.5 horas en segundos
+          FIN=$((SECONDS + 19800))
           while [ $SECONDS -lt $FIN ]; do
             echo "=== Revision $(date -u +%H:%M:%S) UTC ==="
             python monitor.py || echo "[AVISO] monitor.py fallo esta vuelta, se reintenta en el siguiente ciclo."
 
-            git add -A data/
+            mkdir -p data data/historial_dias
+            git add -A
             if git diff --cached --quiet; then
               echo "Sin cambios para commitear esta vuelta."
             else
