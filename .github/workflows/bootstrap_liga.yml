@@ -1,0 +1,64 @@
+name: Bootstrap manual - Cargar historial de una liga
+
+# Este workflow NO corre solo (no tiene 'schedule'). Se dispara a mano
+# desde la pestaña Actions cuando quieres agregar/reforzar el rating
+# propio (Glicko-2) de una liga con su historial de las ultimas ~2
+# temporadas -- ver bootstrap_ligas.py.
+#
+# Uso: Actions -> "Bootstrap manual - Cargar historial de una liga" ->
+# Run workflow -> completa los campos -> Run.
+on:
+  workflow_dispatch:
+    inputs:
+      codigos:
+        description: "Codigos de liga separados por espacio (ej: E0 SP1 I1)"
+        required: true
+        type: string
+      extra:
+        description: "Marcar si son ligas 'extra' (LIGAS_FOOTBALL_DATA_EXTRA, ej: ARG BRA)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar bootstrap
+        run: |
+          if [ "${{ inputs.extra }}" = "true" ]; then
+            python bootstrap_ligas.py --extra ${{ inputs.codigos }}
+          else
+            python bootstrap_ligas.py ${{ inputs.codigos }}
+          fi
+
+      - name: Commit y push del rating cargado
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A data/ratings_propios.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios para commitear."
+          else
+            git commit -m "Bootstrap: historial cargado para ${{ inputs.codigos }}"
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin "${GITHUB_REF_NAME}" && git push && break
+              echo "Push fallo (intento $i), reintentando en 5s..."
+              sleep 5
+            done
+          fi
