@@ -73,24 +73,63 @@ def confederacion_de(pais):
     return CONFEDERACION_POR_PAIS.get(pais)
 
 
+# --- Presupuesto de peticiones nuevas por corrida ---------------------
+# CORRECCIÓN IMPORTANTE (detectada en producción): la primera versión
+# llamaba a la API para resolver el país de CADA equipo de CADA partido
+# del día, sin importar si hacía falta -- con cientos de fixtures en el
+# mundo, eso agotaba el cupo diario de 100 peticiones en la primera
+# corrida (error 429). La corrección real está en seleccionar_partidos.py
+# (solo se llama a esta función cuando la liga NO es doméstica reconocida,
+# es decir, el caso real que motivó el cambio: torneos internacionales).
+# Este tope es una segunda red de seguridad, no la solución principal:
+# aunque un día haya muchísimos partidos internacionales, nunca se debe
+# gastar más de LIMITE_RESOLUCIONES_POR_CORRIDA peticiones solo en esto.
+LIMITE_RESOLUCIONES_POR_CORRIDA = 25
+
+_contador_resoluciones_esta_corrida = 0
+
+
+def resetear_contador_corrida():
+    global _contador_resoluciones_esta_corrida
+    _contador_resoluciones_esta_corrida = 0
+
+
 def resolver_pais_equipo(team_id, nombre_fallback, obtener_info_equipo_fn):
     """
     Devuelve el país real del equipo. Usa caché en disco; si no está
     cacheado, paga 1 petición (obtener_info_equipo_fn) y lo guarda para
-    siempre. Si la petición falla, devuelve None (el llamador debe caer
-    de vuelta al comportamiento anterior: país de la liga, marcado como
-    "sin verificar").
+    siempre -- PERO solo si todavía hay presupuesto disponible esta
+    corrida (ver LIMITE_RESOLUCIONES_POR_CORRIDA) y cupo real restante
+    del día. Si no hay presupuesto, devuelve None de inmediato SIN pagar
+    ninguna petición -- el llamador cae de vuelta al comportamiento
+    anterior (país de la liga, marcado como "sin verificar").
     """
+    global _contador_resoluciones_esta_corrida
+
     cache = _cargar()
     entrada = cache.get(str(team_id))
     if entrada:
         return entrada["pais"]
 
+    if _contador_resoluciones_esta_corrida >= LIMITE_RESOLUCIONES_POR_CORRIDA:
+        return None
+
+    try:
+        from cuota_api_football import uso_de_hoy
+        _usadas, disponibles = uso_de_hoy()
+        if disponibles <= 15:  # deja margen para el resto de la Fase 1 y otras fases del día
+            return None
+    except Exception:
+        pass  # si no se puede leer el contador local, seguimos con el tope de corrida como única red
+
     try:
         info = obtener_info_equipo_fn(team_id)
     except Exception as e:
         print(f"[AVISO] No se pudo resolver el país del equipo {nombre_fallback} (id {team_id}): {e}")
+        _contador_resoluciones_esta_corrida += 1
         return None
+
+    _contador_resoluciones_esta_corrida += 1
 
     if not info:
         return None

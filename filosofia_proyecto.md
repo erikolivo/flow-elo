@@ -177,3 +177,31 @@ mientras el rating propio gana confianza, en vez de un interruptor
 todo/nada. Esto se revisará con evidencia real (ver el desglose de
 acierto por madurez en el reporte de las 6am) y podrá ajustarse si los
 datos muestran que alertar tan temprano (n=1-3 partidos) no compensa.
+
+## 8. Corrección post-producción — resolución de país agotaba el cupo diario
+
+**Lo que pasó:** en la primera corrida real de Fase 1 con la v2, el
+sistema agotó el cupo de 100 peticiones/día de API-Football (error 429)
+antes de terminar de seleccionar los partidos del día.
+
+**Causa raíz:** la resolución de país-por-equipo (`team_resolver.py`,
+agregada para corregir el emparejamiento en torneos internacionales) se
+estaba llamando para CADA equipo de CADA partido del mundo ese día
+(cientos de fixtures), en vez de solo para los casos que de verdad la
+necesitaban. Esto contradecía el principio ya establecido en la sección
+4 de este documento ("nunca gastar una petición si se puede evitar").
+
+**La corrección:** la gran mayoría de partidos son domésticos (misma
+liga = mismo país para ambos equipos), donde el método anterior (país de
+la liga del fixture) ya es confiable y no cuesta ninguna petición. Ahora
+solo se paga la petición de país-por-equipo cuando la liga del fixture
+NO es reconocible como doméstica (el caso real que motivó el cambio:
+Copa Libertadores, Champions League, etc.). Además se agregó un tope
+duro por corrida (25 resoluciones nuevas) y una verificación del cupo
+restante antes de cada llamada, como redes de seguridad adicionales.
+
+**Lección de fondo:** una corrección de calidad (mejorar el
+emparejamiento) puede introducir sin querer un problema de otro tipo
+(cupo) si no se piensa en el costo marginal de cuándo se dispara. Ambas
+cosas -- calidad del dato y costo de obtenerlo -- se revisan juntas de
+aquí en adelante para cualquier cambio que toque `fetch_data.py`.

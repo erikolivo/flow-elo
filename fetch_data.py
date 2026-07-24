@@ -84,8 +84,13 @@ def _api_football_request(endpoint, params=None, timeout=20):
     Punto único por donde pasan TODAS las llamadas a API-Football.
     Usa una sola cuenta (API_FOOTBALL_KEY) y registra el uso del día vía
     cuota_api_football.py, para poder reportarlo en el resumen de las 6am.
+
+    Si la API responde 429 (cupo diario agotado), se marca el contador
+    LOCAL como agotado de inmediato -- sin esto, el resto de la misma
+    corrida seguiría intentando peticiones que sabemos que van a fallar,
+    hasta encontrarse el error en cada una (visto en producción).
     """
-    from cuota_api_football import registrar_uso
+    from cuota_api_football import registrar_uso, marcar_agotado
 
     r = requests.get(
         f"{API_FOOTBALL_BASE}/{endpoint}",
@@ -93,6 +98,8 @@ def _api_football_request(endpoint, params=None, timeout=20):
         params=params,
         timeout=timeout,
     )
+    if r.status_code == 429:
+        marcar_agotado()
     r.raise_for_status()
     registrar_uso()
     return r.json().get("response", [])

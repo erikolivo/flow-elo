@@ -52,3 +52,13 @@ def uso_de_hoy():
     estado = _cargar_estado()
     usadas = estado["usadas"]
     return usadas, max(0, LIMITE_DIARIO - usadas)
+
+
+def marcar_agotado():
+    """Fuerza el contador local al límite diario -- se usa cuando la API
+    responde 429 (cupo real agotado según el proveedor), para que el
+    resto de la corrida deje de insistir con peticiones que sabemos que
+    van a fallar."""
+    estado = _cargar_estado()
+    estado["usadas"] = LIMITE_DIARIO
+    _guardar_estado(estado)

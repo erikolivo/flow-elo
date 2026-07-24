@@ -85,13 +85,24 @@ def ya_se_completo_hoy():
 
 
 def _resolver_pais_con_respaldo(team_id, nombre, pais_liga):
-    """País propio del equipo (cacheado) -> si falla, país de la liga
-    del fixture (comportamiento anterior, marcado como respaldo)."""
+    """
+    CORRECCIÓN IMPORTANTE (post-producción): la primera versión llamaba
+    a la API para resolver el país de CADA equipo de CADA partido del
+    día, sin importar si hacía falta -- eso agotaba el cupo diario en la
+    primera corrida. La corrección: en un partido DOMÉSTICO (liga con
+    país reconocido en el mapeo), el país de la liga YA es correcto para
+    ambos equipos y no hace falta pagar ninguna petición -- el caso real
+    que motivó resolver por equipo es el de torneos INTERNACIONALES
+    (liga sin país reconocido, ej. "World"), y es ahí, solo ahí, donde
+    vale la pena pagar la petición nueva.
+    """
+    if pais_liga in PAIS_A_CODIGO_CLUBELO:
+        return pais_liga, True  # doméstico: país de la liga es confiable, gratis
+
     pais = team_resolver.resolver_pais_equipo(team_id, nombre, obtener_info_equipo)
     if pais:
         return pais, True
-    codigo_liga = PAIS_A_CODIGO_CLUBELO.get(pais_liga)
-    return pais_liga if codigo_liga else None, False
+    return None, False
 
 
 def seleccionar():
@@ -101,6 +112,7 @@ def seleccionar():
 
     hoy = fecha_local_hoy()
     print(f"Buscando partidos de hoy ({hoy})...")
+    team_resolver.resetear_contador_corrida()
 
     fixtures_api = obtener_fixtures_por_fecha(hoy)
     print(f"Partidos de hoy en API-Football (todas las ligas): {len(fixtures_api)}")
