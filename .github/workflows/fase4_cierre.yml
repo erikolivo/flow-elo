@@ -1,0 +1,52 @@
+name: Fase 4 - Cierre de resultados
+
+# Ventana 23:00-01:00 hora local (UTC-5) = 04:00-06:00 UTC (del dia
+# siguiente en UTC). Reintenta cada 15 min hasta lograrlo.
+on:
+  schedule:
+    - cron: "*/15 4-5 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: fase4-cierre
+  cancel-in-progress: false
+
+jobs:
+  cerrar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Cerrar resultados del dia
+        run: python cerrar_resultados.py
+
+      - name: Commit y push (con reintento)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A data/
+          if git diff --cached --quiet; then
+            echo "Sin cambios para commitear."
+          else
+            git commit -m "Fase 4: cierre de resultados del dia"
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin "${GITHUB_REF_NAME}" && git push && break
+              echo "Push fallo (intento $i), reintentando en 5s..."
+              sleep 5
+            done
+          fi
