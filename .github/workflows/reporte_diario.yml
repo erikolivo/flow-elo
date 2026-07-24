@@ -1,0 +1,55 @@
+name: Reporte diario (6am)
+
+# Ventana 06:00-07:00 hora local (UTC-5) = 11:00-12:00 UTC.
+# Reintenta cada 15 min hasta lograrlo. Depende de que Fase 4 de ayer
+# ya haya archivado data/historial_dias/<ayer>.json -- si todavia no
+# existe, reporte_diario.py lo detecta y no hace nada, esperando al
+# siguiente ciclo de 15 min.
+on:
+  schedule:
+    - cron: "*/15 11 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: reporte-diario
+  cancel-in-progress: false
+
+jobs:
+  reportar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Enviar reporte de ayer
+        run: python reporte_diario.py
+
+      - name: Commit y push (con reintento)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A data/
+          if git diff --cached --quiet; then
+            echo "Sin cambios para commitear."
+          else
+            git commit -m "Reporte diario: estado enviado"
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin "${GITHUB_REF_NAME}" && git push && break
+              echo "Push fallo (intento $i), reintentando en 5s..."
+              sleep 5
+            done
+          fi
