@@ -2020,25 +2020,25 @@
       "nombre": "Kozuv Gevgelija",
       "pais": null,
       "liga": "Friendlies Clubs",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:4328": {
       "nombre": "Belasica",
       "pais": null,
       "liga": "Friendlies Clubs",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:8540": {
       "nombre": "Belasitsa",
@@ -4169,12 +4169,12 @@
       "pais": "France",
       "liga": "Friendlies Clubs",
       "rating": 1500.0,
-      "rd": 350.0,
-      "vol": 0.06,
-      "partidos_jugados": 0,
+      "rd": 290.32,
+      "vol": 0.059999,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:3058": {
       "nombre": "Haguenau",
@@ -9856,13 +9856,13 @@
       "nombre": "Myanmar",
       "pais": null,
       "liga": "ASEAN Championship",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:1538": {
       "nombre": "Malaysia",
@@ -10037,12 +10037,12 @@
       "pais": "France",
       "liga": "Friendlies Clubs",
       "rating": 1500.0,
-      "rd": 350.0,
-      "vol": 0.06,
-      "partidos_jugados": 0,
+      "rd": 290.32,
+      "vol": 0.059999,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:51": {
       "nombre": "Brighton",
@@ -15304,13 +15304,13 @@
       "nombre": "Singida Black Stars",
       "pais": null,
       "liga": "CECAFA Club Cup",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:24439": {
       "nombre": "Jamus",
@@ -15652,13 +15652,13 @@
       "nombre": "KuPS",
       "pais": "Finland",
       "liga": "Veikkausliiga",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:650": {
       "nombre": "VPS",
@@ -21412,13 +21412,13 @@
       "nombre": "Modena",
       "pais": "Italy",
       "liga": "Friendlies Clubs",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:9461": {
       "nombre": "Virtus Bolzano",
@@ -21628,13 +21628,13 @@
       "nombre": "Mogadishu City",
       "pais": null,
       "liga": "CECAFA Club Cup",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:9174": {
       "nombre": "Kiffen",
@@ -37576,37 +37576,37 @@
       "nombre": "Chelsea",
       "pais": "England",
       "liga": "Friendlies Clubs",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:939": {
       "nombre": "Western Sydney Wanderers",
       "pais": null,
       "liga": "Friendlies Clubs",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:1555": {
       "nombre": "Philippines",
       "pais": null,
       "liga": "ASEAN Championship",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:9426": {
       "nombre": "Paro",
@@ -37720,25 +37720,25 @@
       "nombre": "Nasaf",
       "pais": null,
       "liga": "Super League",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:4221": {
       "nombre": "Qizilqum",
       "pais": null,
       "liga": "Super League",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:4217": {
       "nombre": "Neftchi",
@@ -37768,37 +37768,37 @@
       "nombre": "Xorazm",
       "pais": null,
       "liga": "Super League",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:4225": {
       "nombre": "Surkhon",
       "pais": null,
       "liga": "Super League",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:490": {
       "nombre": "Cagliari",
       "pais": "Italy",
       "liga": "Friendlies Clubs",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:3859": {
       "nombre": "Dainava",
@@ -37828,13 +37828,13 @@
       "nombre": "Sabah FA",
       "pais": null,
       "liga": "UEFA Champions League",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:9514": {
       "nombre": "Pineto",
@@ -37913,24 +37913,24 @@
       "pais": "Bulgaria",
       "liga": "Second League",
       "rating": 1500.0,
-      "rd": 350.0,
-      "vol": 0.06,
-      "partidos_jugados": 0,
+      "rd": 290.32,
+      "vol": 0.059999,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:1415": {
       "nombre": "CSKA Sofia II",
       "pais": "Bulgaria",
       "liga": "Second League",
       "rating": 1500.0,
-      "rd": 350.0,
-      "vol": 0.06,
-      "partidos_jugados": 0,
+      "rd": 290.32,
+      "vol": 0.059999,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-29"
     },
     "id:2870": {
       "nombre": "Shabab Al Ahli Dubai",
