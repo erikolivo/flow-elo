@@ -45,6 +45,7 @@ from poisson_model import evaluar_favorito, cumple_filtro_cuota
 import ratings_store
 import team_resolver
 import elo_desde_goal_index
+import cuotas_reales
 
 DATA_DIR = Path(__file__).parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
@@ -106,6 +107,8 @@ def seleccionar():
 
     fixtures_api = obtener_fixtures_por_fecha(hoy)
     print(f"Partidos de hoy en API-Football (todas las ligas): {len(fixtures_api)}")
+
+    favoritos_cuota_real = cuotas_reales.obtener_favoritos_cuota_real(fixtures_api)
 
     ranking = obtener_ranking_clubelo(hoy)
     if not ranking:
@@ -203,11 +206,39 @@ def seleccionar():
             continue
 
         evaluacion = evaluar_favorito(rating_home, rating_away, gi_home, gi_away)
-        if not cumple_filtro_cuota(evaluacion):
+
+        datos_cuota_real = favoritos_cuota_real.get(f["fixture"]["id"])
+        es_favorito_por_cuota_real = datos_cuota_real is not None
+
+        # Se incluye el partido si CUALQUIERA de las dos fuentes (modelo
+        # propio o cuota real) lo marca como favorito claro -- la cuota
+        # real es evidencia de mercado, no hay motivo para descartar un
+        # partido que ella si ve claro solo porque el proxy propio no.
+        if not cumple_filtro_cuota(evaluacion) and not es_favorito_por_cuota_real:
             continue
 
         favorito_nombre = home if evaluacion["lado"] == "local" else away
         no_favorito_nombre = away if evaluacion["lado"] == "local" else home
+
+        # Verificado = las dos fuentes coinciden en el mismo lado. Si la
+        # cuota real favorece al lado CONTRARIO del modelo, no se pisa
+        # el dato del modelo -- se deja constancia de la discrepancia
+        # para que la persona lo vea con su propio criterio.
+        verificado_cuota_real = False
+        discrepancia_cuota_real = False
+        cuota_real_info = {}
+        if es_favorito_por_cuota_real:
+            lado_odds = datos_cuota_real["lado"]
+            if lado_odds == evaluacion["lado"]:
+                verificado_cuota_real = True
+            else:
+                discrepancia_cuota_real = True
+            cuota_real_info = {
+                "cuota_real": datos_cuota_real["cuota"],
+                "probabilidad_cuota_real": round(datos_cuota_real["probabilidad"] * 100, 1),
+                "casa_apuestas": datos_cuota_real["casa_apuestas"],
+                "lado_favorito_cuota_real": lado_odds,
+            }
 
         seleccionados.append({
             "partido": f"{home} vs {away}",
@@ -230,6 +261,10 @@ def seleccionar():
             "rating_propio_partidos_visitante": n_away,
             "rd_local": rd_home,
             "rd_visitante": rd_away,
+            "verificado_cuota_real": verificado_cuota_real,
+            "discrepancia_cuota_real": discrepancia_cuota_real,
+            "favorito_solo_por_cuota_real": es_favorito_por_cuota_real and not cumple_filtro_cuota(evaluacion),
+            **cuota_real_info,
             "hora_inicio": f["fixture"]["date"],
             "fixture_id": f["fixture"]["id"],
             "home_id": home_id,
@@ -245,6 +280,15 @@ def seleccionar():
     print(f"Partidos sin ninguna fuente de rating disponible (no evaluables): {sin_elo_ni_rating_propio}")
     print(f"Partidos evaluados SIN poder verificar el pais de ambos equipos: {sin_pais_verificado}")
     print(f"Partidos con al menos un Elo estimado via Goal Index: {elo_estimados_van}")
+    n_verificados = sum(1 for p in seleccionados if p["verificado_cuota_real"])
+    n_solo_cuota = sum(1 for p in seleccionados if p["favorito_solo_por_cuota_real"])
+    n_discrepancia = sum(1 for p in seleccionados if p["discrepancia_cuota_real"])
+    print(f"Verificados por cuota real (coinciden con el modelo): {n_verificados}")
+    print(f"Agregados SOLO por cuota real (el modelo no los tenia): {n_solo_cuota}")
+    print(f"Con discrepancia (modelo y cuota real no coinciden en el lado): {n_discrepancia}")
+
+    # Verificados primero -- prioridad visual en el resumen de Telegram.
+    seleccionados.sort(key=lambda p: not p["verificado_cuota_real"])
 
     ARCHIVO_SALIDA.write_text(
         json.dumps({"fecha": hoy, "partidos": seleccionados}, ensure_ascii=False, indent=2),

@@ -368,3 +368,53 @@ def calcular_goal_index_desde_standings(standings):
             "goal_index": round(gf_prom - gc_prom, 2),
         }
     return resultado
+
+
+# ---------------------------------------------------------------------------
+# 6. THE ODDS API (cuotas reales) -- opcional, solo si ODDS_API_KEY esta
+#    configurada. Plan free: cupo MENSUAL (no diario) -- ver
+#    cuota_odds_api.py, que lee el cupo real de los headers de cada
+#    respuesta en vez de adivinar.
+# ---------------------------------------------------------------------------
+
+ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
+ODDS_API_BASE = "https://api.the-odds-api.com/v4"
+
+
+def obtener_deportes_odds_api():
+    """
+    Lista los deportes/ligas actualmente activos en The Odds API. Este
+    endpoint NO consume cupo (segun la documentacion oficial) -- se usa
+    para validar que una sport_key mapeada sigue vigente antes de gastar
+    una peticion real en ella.
+    Devuelve un set de sport_keys activas (vacio si falla, nunca lanza
+    excepcion hacia arriba: la ausencia de cuotas reales no debe tumbar
+    el resto de Fase 1).
+    """
+    if not ODDS_API_KEY:
+        return set()
+    try:
+        r = requests.get(f"{ODDS_API_BASE}/sports", params={"apiKey": ODDS_API_KEY}, timeout=20)
+        r.raise_for_status()
+        return {d["key"] for d in r.json() if d.get("group") == "Soccer"}
+    except Exception as e:
+        print(f"[AVISO] No se pudo consultar deportes activos de The Odds API: {e}")
+        return set()
+
+
+def obtener_cuotas_liga(sport_key, regions="uk,eu", markets="h2h"):
+    """
+    1 peticion (cuesta cupo real, ver cuota_odds_api.py). Devuelve la
+    lista de eventos de esa liga con cuotas h2h (local/empate/visitante)
+    de los bookmakers disponibles en las regiones pedidas.
+    """
+    from cuota_odds_api import actualizar_desde_headers
+
+    r = requests.get(
+        f"{ODDS_API_BASE}/sports/{sport_key}/odds",
+        params={"apiKey": ODDS_API_KEY, "regions": regions, "markets": markets, "oddsFormat": "decimal"},
+        timeout=20,
+    )
+    actualizar_desde_headers(r.headers)
+    r.raise_for_status()
+    return r.json()

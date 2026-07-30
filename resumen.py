@@ -51,12 +51,23 @@ def enviar_resumen():
         return
 
     lineas = [f"📋 <b>{len(partidos)} partido(s) seleccionados hoy ({datos.get('fecha','')})</b> (horas en tu horario local)"]
+    n_verificados = sum(1 for p in partidos if p.get("verificado_cuota_real"))
+    if n_verificados:
+        lineas.append(f"💰 {n_verificados} confirmado(s) por cuota real de casa de apuestas\n")
+
     for p in partidos:
         hora = _hora_local(p.get("hora_inicio"))
         estado = "✅" if p["fixture_id"] else "⚠️ sin vigilancia en vivo"
+        etiqueta = ""
+        if p.get("verificado_cuota_real"):
+            etiqueta = " 💰✅ <b>verificado</b>"
+        elif p.get("favorito_solo_por_cuota_real"):
+            etiqueta = " 💰 <b>solo cuota real</b>"
+        elif p.get("discrepancia_cuota_real"):
+            etiqueta = f" ⚠️ cuota real favorece a {escapar_html(p.get('lado_favorito_cuota_real',''))}"
         lineas.append(
             f"• {hora} — {escapar_html(p['partido'])} · favorito: {escapar_html(p['favorito'])} "
-            f"(cuota inicial {p['cuota_inicial']}) {estado}"
+            f"(cuota inicial {p['cuota_inicial']}) {estado}{etiqueta}"
         )
 
     exito = enviar_mensaje_telegram("\n".join(lineas))
