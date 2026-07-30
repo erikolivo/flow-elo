@@ -153,6 +153,10 @@ def _snapshot(stats_local, stats_visitante, minuto, goles_local=0, goles_visitan
         "tiros_visitante": _valor_stat(stats_visitante, "Total Shots"),
         "tiros_puerta_local": _valor_stat(stats_local, "Shots on Goal"),
         "tiros_puerta_visitante": _valor_stat(stats_visitante, "Shots on Goal"),
+        "tiros_area_local": _valor_stat(stats_local, "Shots insidebox"),
+        "tiros_area_visitante": _valor_stat(stats_visitante, "Shots insidebox"),
+        "tiros_fuera_area_local": _valor_stat(stats_local, "Shots outsidebox"),
+        "tiros_fuera_area_visitante": _valor_stat(stats_visitante, "Shots outsidebox"),
         "corners_local": _valor_stat(stats_local, "Corner Kicks"),
         "corners_visitante": _valor_stat(stats_visitante, "Corner Kicks"),
         "posesion_local": _valor_stat(stats_local, "Ball Possession"),
@@ -185,6 +189,28 @@ def _dominancia_historica(historial_snapshots, favorito_es_local):
 def _link_busqueda(nombre_local, nombre_visitante, sitio):
     consulta = f"{nombre_local} vs {nombre_visitante} {sitio}".replace(" ", "+")
     return f"https://www.google.com/search?q={consulta}"
+
+
+def _sustituciones_recientes(eventos_crudos, equipo_nombre, minuto_actual, ventana=10):
+    """
+    Cuenta cambios del equipo indicado en los ultimos 'ventana' minutos
+    reales. No se puede confirmar si un cambio es ofensivo o defensivo
+    sin datos de posicion del jugador (no disponibles en el plan
+    gratuito de API-Football) -- se usa solo como senal blanda de
+    "hubo actividad tactica reciente" (ver momentum.bonus_sustituciones).
+    """
+    if minuto_actual is None:
+        return 0
+    contador = 0
+    for ev in eventos_crudos:
+        if ev.get("type") != "subst":
+            continue
+        if ev.get("team", {}).get("name") != equipo_nombre:
+            continue
+        minuto_evento = ev.get("time", {}).get("elapsed", 0)
+        if 0 <= (minuto_actual - minuto_evento) <= ventana:
+            contador += 1
+    return contador
 
 
 def _extraer_eventos_nuevos(eventos_crudos, ya_procesados):
@@ -222,7 +248,7 @@ def _extraer_eventos_nuevos(eventos_crudos, ya_procesados):
 
 
 def _evaluar_escenarios(p, minuto, goles_local, goles_visitante, snap_actual, snap_anterior,
-                         historial_snapshots, eventos_nuevos):
+                         historial_snapshots, eventos_nuevos, eventos_crudos):
     favorito_es_local = p["favorito_es_local"]
     goles_favorito = goles_local if favorito_es_local else goles_visitante
     goles_rival = goles_visitante if favorito_es_local else goles_local
@@ -234,6 +260,15 @@ def _evaluar_escenarios(p, minuto, goles_local, goles_visitante, snap_actual, sn
     xg_disp = snap_actual.get("xg_disponible", False)
     presion_favorito, detalle_favorito = momentum.calcular_presion(snap_actual, snap_anterior, lado_favorito, xg_disp)
     presion_rival, detalle_rival = momentum.calcular_presion(snap_actual, snap_anterior, lado_rival, xg_disp)
+
+    # Señal blanda de sustituciones recientes (ver nota de honestidad en
+    # momentum.py: no se puede confirmar si son ofensivas sin datos de
+    # posicion del jugador, no disponibles gratis).
+    cambios_favorito = _sustituciones_recientes(eventos_crudos, p["favorito"], minuto)
+    cambios_rival = _sustituciones_recientes(eventos_crudos, p["no_favorito"], minuto)
+    presion_favorito += momentum.bonus_sustituciones(cambios_favorito)
+    presion_rival += momentum.bonus_sustituciones(cambios_rival)
+
     momentum_favorito = momentum.momentum_relativo(presion_favorito, presion_rival)
     zona = momentum.zona_momentum(momentum_favorito)
 
@@ -413,6 +448,7 @@ def revisar():
             continue
 
         eventos_nuevos = []
+        eventos_crudos = []
         try:
             eventos_crudos = obtener_eventos_fixture(p["fixture_id"])
             eventos_nuevos = _extraer_eventos_nuevos(eventos_crudos, p.setdefault("eventos_procesados", []))
@@ -429,7 +465,7 @@ def revisar():
 
         escenarios = _evaluar_escenarios(
             p, minuto, goles_local, goles_visitante, snap_actual, snap_anterior,
-            p["historial_snapshots"], eventos_nuevos)
+            p["historial_snapshots"], eventos_nuevos, eventos_crudos)
 
         p["historial_snapshots"].append(snap_actual)
         cambios = True
