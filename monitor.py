@@ -56,6 +56,7 @@ import momentum
 
 DATA_DIR = Path(__file__).parent / "data"
 ARCHIVO_PARTIDOS = DATA_DIR / "partidos_hoy.json"
+ARCHIVO_ESTADO_MONITOR = DATA_DIR / "estado_monitor.json"
 
 MINUTOS_ANTES_DEL_INICIO = 10
 MINUTOS_DURACION_MAXIMA = 130
@@ -83,10 +84,47 @@ def _en_ventana(kickoff_utc_iso, ahora=None):
            (kickoff + timedelta(minutes=MINUTOS_DURACION_MAXIMA))
 
 
-def _toca_revisar_ahora(cantidad_en_ventana):
-    intervalo = INTERVALO_POCOS if cantidad_en_ventana <= UMBRAL_POCOS_PARTIDOS else INTERVALO_MUCHOS
-    minuto_actual = datetime.now(timezone.utc).minute
-    return minuto_actual % intervalo == 0
+def _debe_revisar_ahora(cantidad_en_ventana):
+    """
+    CORRECCION IMPORTANTE (bug detectado en produccion): la version
+    anterior decidia "toca revisar" comparando minuto_actual % intervalo
+    == 0. Como el loop interno de Fase 3 avanza de 5 en 5 minutos desde
+    un minuto de arranque arbitrario (segun cuando el job realmente
+    empieza a correr, no necesariamente alineado a :00), el residuo
+    podia quedar atrapado para siempre en un valor que nunca es multiplo
+    del intervalo (ej. arrancando en minuto 2: la secuencia 2,7,12,17,22...
+    modulo 10 alterna entre 2 y 7 ETERNAMENTE, nunca toca 0) -- el
+    resultado real fue que Fase 3 nunca revisaba nada.
+
+    La correccion: en vez de depender del reloj, se guarda la hora real
+    de la ULTIMA revision efectiva (data/estado_monitor.json) y se
+    compara cuanto tiempo transcurrio de verdad desde entonces. Esto
+    funciona sin importar en que minuto arranco el job.
+    """
+    intervalo_min = INTERVALO_POCOS if cantidad_en_ventana <= UMBRAL_POCOS_PARTIDOS else INTERVALO_MUCHOS
+    ahora = datetime.now(timezone.utc)
+
+    estado = {}
+    if ARCHIVO_ESTADO_MONITOR.exists():
+        try:
+            estado = json.loads(ARCHIVO_ESTADO_MONITOR.read_text(encoding="utf-8"))
+        except Exception:
+            estado = {}
+
+    ultima_str = estado.get("ultima_revision_utc")
+    if ultima_str:
+        try:
+            ultima = datetime.fromisoformat(ultima_str)
+            minutos_transcurridos = (ahora - ultima).total_seconds() / 60
+            if minutos_transcurridos < intervalo_min:
+                return False
+        except Exception:
+            pass  # estado corrupto: mejor revisar ahora que quedarse atascado
+
+    estado["ultima_revision_utc"] = ahora.isoformat()
+    DATA_DIR.mkdir(exist_ok=True)
+    ARCHIVO_ESTADO_MONITOR.write_text(json.dumps(estado, ensure_ascii=False, indent=2), encoding="utf-8")
+    return True
 
 
 def _valor_stat(stats_equipo, nombre_stat):
@@ -343,7 +381,7 @@ def revisar():
         print("Ningún partido vigilado está en su ventana horaria ahora (0 peticiones gastadas).")
         return
 
-    if not _toca_revisar_ahora(len(en_ventana)):
+    if not _debe_revisar_ahora(len(en_ventana)):
         print(f"Frecuencia adaptativa: con {len(en_ventana)} partido(s) en ventana, "
               f"todavía no toca revisar en este ciclo de 5 min.")
         return
