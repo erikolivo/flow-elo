@@ -5896,13 +5896,13 @@
       "nombre": "Instituto Cordoba",
       "pais": "Argentina",
       "liga": "Liga Profesional Argentina",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:2621": {
       "nombre": "HFX Wanderers FC",
@@ -6340,13 +6340,13 @@
       "nombre": "Antigua GFC",
       "pais": null,
       "liga": "Liga Nacional",
-      "rating": 1500.0,
-      "rd": 350.0,
-      "vol": 0.06,
-      "partidos_jugados": 0,
+      "rating": 1383.36,
+      "rd": 286.93,
+      "vol": 0.059999,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:3643": {
       "nombre": "Marquense",
@@ -6412,13 +6412,13 @@
       "nombre": "Platense",
       "pais": "Argentina",
       "liga": "Liga Profesional Argentina",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:441": {
       "nombre": "Union Santa Fe",
@@ -25120,13 +25120,13 @@
       "nombre": "Cienciano",
       "pais": "Peru",
       "liga": "Primera División",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1731.88,
+      "rd": 286.93,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:27774": {
       "nombre": "Defensores W",
@@ -25192,13 +25192,13 @@
       "nombre": "Kansas City W",
       "pais": "USA",
       "liga": "NWSL Women",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1662.31,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:10280": {
       "nombre": "Inter Miami II",
@@ -26788,13 +26788,13 @@
       "nombre": "Alianza",
       "pais": null,
       "liga": "Primera Division",
-      "rating": 1662.31,
-      "rd": 290.32,
-      "vol": 0.06,
-      "partidos_jugados": 1,
+      "rating": 1750.54,
+      "rd": 256.35,
+      "vol": 0.059999,
+      "partidos_jugados": 2,
       "partidos_bootstrap": 0,
-      "partidos_reales": 1,
-      "ultima_actualizacion": "2026-07-27"
+      "partidos_reales": 2,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:1612": {
       "nombre": "Minnesota United FC",
@@ -26872,13 +26872,13 @@
       "nombre": "Lanus",
       "pais": "Argentina",
       "liga": "Liga Profesional Argentina",
-      "rating": 1662.31,
-      "rd": 290.32,
+      "rating": 1497.45,
+      "rd": 256.35,
       "vol": 0.06,
-      "partidos_jugados": 1,
+      "partidos_jugados": 2,
       "partidos_bootstrap": 0,
-      "partidos_reales": 1,
-      "ultima_actualizacion": "2026-07-27"
+      "partidos_reales": 2,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:460": {
       "nombre": "San Lorenzo",
@@ -35513,12 +35513,12 @@
       "pais": "Brazil",
       "liga": "Serie A",
       "rating": 1500.0,
-      "rd": 350.0,
-      "vol": 0.06,
-      "partidos_jugados": 0,
+      "rd": 290.32,
+      "vol": 0.059999,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:131": {
       "nombre": "Corinthians",
@@ -36821,12 +36821,12 @@
       "pais": "Brazil",
       "liga": "Serie A",
       "rating": 1500.0,
-      "rd": 350.0,
-      "vol": 0.06,
-      "partidos_jugados": 0,
+      "rd": 290.32,
+      "vol": 0.059999,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:2329": {
       "nombre": "A. Italiano",
@@ -41908,13 +41908,13 @@
       "nombre": "Racing Louisville W",
       "pais": "USA",
       "liga": "NWSL Women",
-      "rating": 1500.0,
-      "rd": 350.0,
+      "rating": 1337.69,
+      "rd": 290.32,
       "vol": 0.06,
-      "partidos_jugados": 0,
+      "partidos_jugados": 1,
       "partidos_bootstrap": 0,
-      "partidos_reales": 0,
-      "ultima_actualizacion": null
+      "partidos_reales": 1,
+      "ultima_actualizacion": "2026-07-30"
     },
     "id:17665": {
       "nombre": "MLS All-Stars",
